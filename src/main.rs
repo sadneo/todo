@@ -164,6 +164,5 @@ fn init_file() -> anyhow::Result<()> {
 fn todo_file() -> PathBuf {
     let mut dir = home::home_dir().expect("Couldn't find your home directory");
     dir.push(".mytodo");
-    println!("{:?}", dir);
     dir
 }
