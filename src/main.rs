@@ -1,6 +1,8 @@
-use std::fmt;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::{fmt, fs, path::Path};
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 struct List {
     name: String,
     items: Vec<Item>,
@@ -35,7 +37,7 @@ impl fmt::Display for List {
     }
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 struct Item {
     checked: bool,
     text: String,
@@ -69,64 +71,85 @@ struct Args {
 
 #[derive(Subcommand, Debug, Clone)]
 enum Commands {
-    Create {
-        name: String,
-    },
-    Destroy {
-        name: String,
-    },
-    Add {
-        name: String,
-        text: String,
-    },
-    Remove {
-        name: String,
-        index: usize,
-    },
-    Toggle {
-        name: String,
-        index: usize,
-    },
+    Create { name: String },
+    Destroy { name: String },
+    Add { name: String, text: String },
+    Remove { name: String, index: usize },
+    Toggle { name: String, index: usize },
 }
 
 fn main() {
     let args = Args::parse();
+    init_file();
+
     match &args.command {
-        Commands::Create{ name } => {
-            let list = List::new(name);
-            println!("{}", list);
-        },
-        Commands::Destroy{ name } => destroy(name),
-        Commands::Add{name, text} => {
-            let list = get(name);
+        Commands::Create { name } => {
+            // check if list is there, if it's not,
+            // then create a list, serialize it, and write it
+        }
+        Commands::Destroy { name } => {
+            // check if the list is there, if it is,
+            // then remove it from the vector, serialize it, and write it
+        }
+        Commands::Add { name, text } => {
+            let list = get_list(name);
             let item = Item::new(text);
             if let Some(mut list) = list {
                 list.push_item(item);
             }
-        },
-        Commands::Remove{name, index} => {
-            let list = get(name);
+        }
+        Commands::Remove { name, index } => {
+            let list = get_list(name);
             if let Some(mut list) = list {
                 list.remove_item(*index);
             }
-        },
-        Commands::Toggle{name, index} => {
-            let list = get(name);
+        }
+        Commands::Toggle { name, index } => {
+            let list = get_list(name);
             if let Some(mut list) = list {
                 list.toggle_item(*index);
             }
-        },
+        }
     }
 }
 
-fn create(name: &String) -> List {
-    // need to add to file
-    List::new(name)
+fn get_list(name: &String) -> Option<List> {
+    if !exists() {
+        return None;
+    }
+
+    let bytes =
+        fs::read("~/.mytodo").expect("There should be a file here after running init_file()");
+    let list_map: HashMap<String, List> = ron::de::from_bytes(&bytes).expect("Invalid ron notation found");
+    let list = list_map.get(name)
+        .expect("There isn't any list called this name")
+        .clone();
+
+    Some(list)
 }
-fn destroy(name: &String) {
-    // need to remove from file
+fn set_list(name: &String, list: &List) {
+    if !exists() {
+        return;
+    }
+
+    let bytes =
+        fs::read("~/.mytodo").expect("There should be a file here after running init_file()");
+    let mut list_map: HashMap<String, List> = ron::de::from_bytes(&bytes).expect("Invalid ron notation found");
+    list_map.insert(name.to_owned(), list.to_owned());
+
+    let contents = ron::ser::to_string(&list_map).expect("Ron couldn't write for some reason");
+    fs::write("~/.mytodo", contents).expect("Yeah sure this should work");
 }
-fn get(name: &String) -> Option<List> {
-    // need to get from file
-    None
+
+fn init_file() {
+    if exists() {
+        return;
+    }
+
+    let todos: HashMap<String, List> = HashMap::new();
+    let contents = ron::ser::to_string(&todos).expect("Ron couldn't write for some reason");
+    fs::write("~/.mytodo", contents).expect("Yeah sure this should work");
+}
+fn exists() -> bool {
+    Path::new("~/.mytodo").exists()
 }
