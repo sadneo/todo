@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::{fmt, fs};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -143,21 +144,26 @@ fn set_list(name: &String, list: &List) -> anyhow::Result<()> {
 }
 
 fn get_list_map() -> anyhow::Result<HashMap<String, List>> {
-    let bytes = fs::read("/home/aidan/.mytodo")?;
+    let bytes = fs::read(todo_file())?;
     let list_map: HashMap<String, List> = ron::de::from_bytes(&bytes)?;
     Ok(list_map)
 }
 fn set_list_map(list_map: &HashMap<String, List>) -> anyhow::Result<()> {
     let contents = ron::ser::to_string(list_map)?;
-    fs::write("/home/aidan/.mytodo", contents)?;
+    fs::write(todo_file(), contents)?;
     Ok(())
 }
 
 fn init_file() -> anyhow::Result<()> {
     let list_map: HashMap<String, List> = HashMap::new();
     let contents = ron::ser::to_string(&list_map)?;
-    fs::write("/home/aidan/.mytodo", contents)?;
+    fs::write(todo_file(), contents)?;
     Ok(())
+}
+fn todo_file() -> PathBuf {
+    let mut dir = home::home_dir().expect("Couldn't find your home directory");
+    dir.push(".mytodo");
+    dir
 }
 fn list_exists(name: &String) -> bool {
     let list_map = get_list_map();
