@@ -32,7 +32,7 @@ impl fmt::Display for List {
         let b = self
             .items
             .iter()
-            .fold(String::new(), |acc, x| acc + x.to_string().as_str());
+            .fold(String::new(), |acc, x| acc + "\n" + x.to_string().as_str());
         write!(f, "{}:{}", self.name, b)
     }
 }
@@ -73,6 +73,8 @@ struct Args {
 enum Commands {
     Create { name: String },
     Destroy { name: String },
+    Print { name: String },
+    List,
     Add { name: String, text: String },
     Remove { name: String, index: usize },
     Toggle { name: String, index: usize },
@@ -84,7 +86,8 @@ fn main() {
 
     match &args.command {
         Commands::Create { name } => {
-            if !list_exists(name) {
+            if list_exists(name) {
+                println!("poop");
                 return;
             }
             let list = List::new(name);
@@ -92,6 +95,18 @@ fn main() {
         }
         Commands::Destroy { name } => {
             remove_list(name);
+        }
+        Commands::Print { name } => {
+            let list = get_list(name);
+            if let None = list {
+                return;
+            }
+            let list = list.unwrap();
+            println!("{}", list);
+        }
+        Commands::List => {
+            let lists = get_lists();
+            println!("{}", lists);
         }
         Commands::Add { name, text } => {
             let list = get_list(name);
@@ -163,6 +178,16 @@ fn remove_list(name: &String) {
 
     let contents = ron::ser::to_string(&list_map).expect("Ron couldn't write for some reason");
     fs::write("/home/aidan/.mytodo", contents).expect("Yeah sure this should work");
+}
+fn get_lists() -> String {
+    if !exists() {
+        return String::from("<nothing>");
+    }
+
+    let bytes =
+        fs::read("/home/aidan/.mytodo").expect("There should be a file here after running init_file()");
+    let list_map: HashMap<String, List> = ron::de::from_bytes(&bytes).expect("Invalid ron notation found");
+    list_map.keys().fold(String::new(), |acc, str| acc + "\n" + str.as_str())
 }
 
 fn init_file() {
