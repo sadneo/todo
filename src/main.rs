@@ -84,12 +84,14 @@ fn main() {
 
     match &args.command {
         Commands::Create { name } => {
-            // check if list is there, if it's not,
-            // then create a list, serialize it, and write it
+            if !list_exists(name) {
+                return;
+            }
+            let list = List::new(name);
+            set_list(name, &list);
         }
         Commands::Destroy { name } => {
-            // check if the list is there, if it is,
-            // then remove it from the vector, serialize it, and write it
+            remove_list(name);
         }
         Commands::Add { name, text } => {
             let list = get_list(name);
@@ -149,6 +151,19 @@ fn set_list(name: &String, list: &List) {
     let contents = ron::ser::to_string(&list_map).expect("Ron couldn't write for some reason");
     fs::write("~/.mytodo", contents).expect("Yeah sure this should work");
 }
+fn remove_list(name: &String) {
+    if !exists() {
+        return;
+    }
+
+    let bytes =
+        fs::read("~/.mytodo").expect("There should be a file here after running init_file()");
+    let mut list_map: HashMap<String, List> = ron::de::from_bytes(&bytes).expect("Invalid ron notation found");
+    list_map.remove(name);
+
+    let contents = ron::ser::to_string(&list_map).expect("Ron couldn't write for some reason");
+    fs::write("~/.mytodo", contents).expect("Yeah sure this should work");
+}
 
 fn init_file() {
     if exists() {
@@ -162,3 +177,14 @@ fn init_file() {
 fn exists() -> bool {
     Path::new("~/.mytodo").exists()
 }
+fn list_exists(name: &String) -> bool {
+    if !exists() {
+        return false;
+    }
+
+    let bytes =
+        fs::read("~/.mytodo").expect("There should be a file here after running init_file()");
+    let list_map: HashMap<String, List> = ron::de::from_bytes(&bytes).expect("Invalid ron notation found");
+    list_map.contains_key(name)
+}
+
