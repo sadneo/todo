@@ -156,18 +156,11 @@ fn set_list_map(list_map: &HashMap<String, List>) -> anyhow::Result<()> {
 fn init_file() -> anyhow::Result<()> {
     let list_map: HashMap<String, List> = HashMap::new();
     let contents = ron::ser::to_string(&list_map)?;
-    std::fs::File::create("/home/aidan/mytodo")?;
     fs::write("/home/aidan/.mytodo", contents)?;
     Ok(())
 }
 fn list_exists(name: &String) -> bool {
-    let bytes = fs::read("/home/aidan/.mytodo");
-    if let Err(_) = bytes {
-        return false;
-    }
-    let bytes = bytes.unwrap();
-
-    let list_map: ron::error::SpannedResult<HashMap<String, List>> = ron::de::from_bytes(&bytes);
+    let list_map = get_list_map();
     if let Err(_) = list_map {
         return false;
     }
