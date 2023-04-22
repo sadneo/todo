@@ -104,8 +104,8 @@ fn main() -> anyhow::Result<()> {
         Commands::List => {
             let lists = get_list_map()?
                 .keys()
-                .fold(String::new(), |acc, str| acc + "\n" + str.as_str());
-            println!("{}", lists);
+                .fold(String::new(), |acc, str| acc + str.as_str() + "\n");
+            print!("lists: {}", lists);
         }
         Commands::Add { name, text } => {
             let mut list = get_list(name)?;
