@@ -130,10 +130,8 @@ fn get_list(name: &String) -> anyhow::Result<List> {
     let list_map = get_list_map()?;
     let list = list_map
         .get(name)
-        .expect("There isn't any list called this name")
-        .clone();
-    // TODO: improve option handling here
-
+        .ok_or(anyhow::Error::msg("Expected there to be a list"))?;
+    let list = list.clone();
     Ok(list)
 }
 fn set_list(name: &String, list: &List) -> anyhow::Result<()> {
