@@ -87,7 +87,7 @@ fn main() -> anyhow::Result<()> {
 
     match &args.command {
         Commands::Create { name } => {
-            if !list_exists(name) {
+            if !get_list_map()?.contains_key(name) {
                 let list = List::new(name);
                 set_list(name, &list)?;
             }
@@ -153,6 +153,9 @@ fn set_list_map(list_map: &HashMap<String, List>) -> anyhow::Result<()> {
 }
 
 fn init_file() -> anyhow::Result<()> {
+    if todo_file().exists() {
+        return Ok(());
+    }
     let list_map: HashMap<String, List> = HashMap::new();
     let contents = ron::ser::to_string(&list_map)?;
     fs::write(todo_file(), contents)?;
@@ -161,14 +164,6 @@ fn init_file() -> anyhow::Result<()> {
 fn todo_file() -> PathBuf {
     let mut dir = home::home_dir().expect("Couldn't find your home directory");
     dir.push(".mytodo");
+    println!("{:?}", dir);
     dir
-}
-fn list_exists(name: &String) -> bool {
-    let list_map = get_list_map();
-    if let Err(_) = list_map {
-        return false;
-    }
-    let list_map = list_map.unwrap();
-
-    list_map.contains_key(name)
 }
