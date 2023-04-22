@@ -94,21 +94,30 @@ fn main() {
         Commands::Add { name, text } => {
             let list = get_list(name);
             let item = Item::new(text);
-            if let Some(mut list) = list {
-                list.push_item(item);
+            if let None = list {
+                return;
             }
+            let mut list = list.unwrap();
+            list.push_item(item);
+            set_list(name, &list);
         }
         Commands::Remove { name, index } => {
             let list = get_list(name);
-            if let Some(mut list) = list {
-                list.remove_item(*index);
+            if let None = list {
+                return;
             }
+            let mut list = list.unwrap();
+            list.remove_item(*index);
+            set_list(name, &list);
         }
         Commands::Toggle { name, index } => {
             let list = get_list(name);
-            if let Some(mut list) = list {
-                list.toggle_item(*index);
+            if let None = list {
+                return;
             }
+            let mut list = list.unwrap();
+            list.toggle_item(*index);
+            set_list(name, &list);
         }
     }
 }
