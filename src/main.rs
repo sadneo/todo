@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::{fmt, fs, path::Path};
+use std::{fmt, fs};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct List {
@@ -80,137 +80,98 @@ enum Commands {
     Toggle { name: String, index: usize },
 }
 
-fn main() {
+fn main() -> anyhow::Result<()> {
     let args = Args::parse();
-    init_file();
+    init_file()?;
 
     match &args.command {
         Commands::Create { name } => {
-            if list_exists(name) {
-                println!("poop");
-                return;
+            if !list_exists(name) {
+                let list = List::new(name);
+                set_list(name, &list)?;
             }
-            let list = List::new(name);
-            set_list(name, &list);
         }
         Commands::Destroy { name } => {
-            remove_list(name);
+            let mut list_map = get_list_map()?;
+            list_map.remove(name);
+            set_list_map(&list_map)?;
         }
         Commands::Print { name } => {
-            let list = get_list(name);
-            if let None = list {
-                return;
-            }
-            let list = list.unwrap();
+            let list = get_list(name)?;
             println!("{}", list);
         }
         Commands::List => {
-            let lists = get_lists();
+            let lists = get_list_map()?
+                .keys()
+                .fold(String::new(), |acc, str| acc + "\n" + str.as_str());
             println!("{}", lists);
         }
         Commands::Add { name, text } => {
-            let list = get_list(name);
-            let item = Item::new(text);
-            if let None = list {
-                return;
-            }
-            let mut list = list.unwrap();
-            list.push_item(item);
-            set_list(name, &list);
+            let mut list = get_list(name)?;
+            list.push_item(Item::new(text));
+            set_list(name, &list)?;
         }
         Commands::Remove { name, index } => {
-            let list = get_list(name);
-            if let None = list {
-                return;
-            }
-            let mut list = list.unwrap();
+            let mut list = get_list(name)?;
             list.remove_item(*index);
-            set_list(name, &list);
+            set_list(name, &list)?;
         }
         Commands::Toggle { name, index } => {
-            let list = get_list(name);
-            if let None = list {
-                return;
-            }
-            let mut list = list.unwrap();
+            let mut list = get_list(name)?;
             list.toggle_item(*index);
-            set_list(name, &list);
+            set_list(name, &list)?;
         }
     }
+    Ok(())
 }
 
-fn get_list(name: &String) -> Option<List> {
-    if !exists() {
-        return None;
-    }
-
-    let bytes =
-        fs::read("/home/aidan/.mytodo").expect("There should be a file here after running init_file()");
-    let list_map: HashMap<String, List> = ron::de::from_bytes(&bytes).expect("Invalid ron notation found");
-    let list = list_map.get(name)
+fn get_list(name: &String) -> anyhow::Result<List> {
+    let list_map = get_list_map()?;
+    let list = list_map
+        .get(name)
         .expect("There isn't any list called this name")
         .clone();
+    // TODO: improve option handling here
 
-    Some(list)
+    Ok(list)
 }
-fn set_list(name: &String, list: &List) {
-    if !exists() {
-        return;
-    }
-
-    let bytes =
-        fs::read("/home/aidan/.mytodo").expect("There should be a file here after running init_file()");
-    let mut list_map: HashMap<String, List> = ron::de::from_bytes(&bytes).expect("Invalid ron notation found");
+fn set_list(name: &String, list: &List) -> anyhow::Result<()> {
+    let mut list_map = get_list_map()?;
     list_map.insert(name.to_owned(), list.to_owned());
-
-    let contents = ron::ser::to_string(&list_map).expect("Ron couldn't write for some reason");
-    fs::write("/home/aidan/.mytodo", contents).expect("Yeah sure this should work");
-}
-fn remove_list(name: &String) {
-    if !exists() {
-        return;
-    }
-
-    let bytes =
-        fs::read("/home/aidan/.mytodo").expect("There should be a file here after running init_file()");
-    let mut list_map: HashMap<String, List> = ron::de::from_bytes(&bytes).expect("Invalid ron notation found");
-    list_map.remove(name);
-
-    let contents = ron::ser::to_string(&list_map).expect("Ron couldn't write for some reason");
-    fs::write("/home/aidan/.mytodo", contents).expect("Yeah sure this should work");
-}
-fn get_lists() -> String {
-    if !exists() {
-        return String::from("<nothing>");
-    }
-
-    let bytes =
-        fs::read("/home/aidan/.mytodo").expect("There should be a file here after running init_file()");
-    let list_map: HashMap<String, List> = ron::de::from_bytes(&bytes).expect("Invalid ron notation found");
-    list_map.keys().fold(String::new(), |acc, str| acc + "\n" + str.as_str())
+    set_list_map(&list_map)?;
+    Ok(())
 }
 
-fn init_file() {
-    if exists() {
-        return;
-    }
-
-    let todos: HashMap<String, List> = HashMap::new();
-    let contents = ron::ser::to_string(&todos).expect("Ron couldn't write for some reason");
-    std::fs::File::create("/home/aidan/mytodo").expect("Yeah sure this should work x2");
-    fs::write("/home/aidan/.mytodo", contents).expect("Yeah sure this should work");
+fn get_list_map() -> anyhow::Result<HashMap<String, List>> {
+    let bytes = fs::read("/home/aidan/.mytodo")?;
+    let list_map: HashMap<String, List> = ron::de::from_bytes(&bytes)?;
+    Ok(list_map)
 }
-fn exists() -> bool {
-    Path::new("/home/aidan/.mytodo").exists()
+fn set_list_map(list_map: &HashMap<String, List>) -> anyhow::Result<()> {
+    let contents = ron::ser::to_string(list_map)?;
+    fs::write("/home/aidan/.mytodo", contents)?;
+    Ok(())
+}
+
+fn init_file() -> anyhow::Result<()> {
+    let list_map: HashMap<String, List> = HashMap::new();
+    let contents = ron::ser::to_string(&list_map)?;
+    std::fs::File::create("/home/aidan/mytodo")?;
+    fs::write("/home/aidan/.mytodo", contents)?;
+    Ok(())
 }
 fn list_exists(name: &String) -> bool {
-    if !exists() {
+    let bytes = fs::read("/home/aidan/.mytodo");
+    if let Err(_) = bytes {
         return false;
     }
+    let bytes = bytes.unwrap();
 
-    let bytes =
-        fs::read("/home/aidan/.mytodo").expect("There should be a file here after running init_file()");
-    let list_map: HashMap<String, List> = ron::de::from_bytes(&bytes).expect("Invalid ron notation found");
+    let list_map: ron::error::SpannedResult<HashMap<String, List>> = ron::de::from_bytes(&bytes);
+    if let Err(_) = list_map {
+        return false;
+    }
+    let list_map = list_map.unwrap();
+
     list_map.contains_key(name)
 }
-
