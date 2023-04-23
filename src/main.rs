@@ -33,7 +33,10 @@ impl fmt::Display for List {
         let b = self
             .items
             .iter()
-            .fold(String::new(), |acc, x| acc + "\n" + x.to_string().as_str());
+            .enumerate()
+            .fold(String::new(), |acc, (index, x)| {
+                acc + format!("\n{:2}.", index).as_str() + x.to_string().as_str()
+            });
         write!(f, "{}:{}", self.name, b)
     }
 }
@@ -105,7 +108,7 @@ fn main() -> anyhow::Result<()> {
             let lists = get_list_map()?
                 .keys()
                 .fold(String::new(), |acc, str| acc + str.as_str() + "\n");
-            print!("lists: {}", lists);
+            print!("lists:\n{}", lists);
         }
         Commands::Add { name, text } => {
             let mut list = get_list(name)?;
