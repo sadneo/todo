@@ -75,12 +75,19 @@ struct Args {
 
 #[derive(Subcommand, Debug, Clone)]
 enum Commands {
-    Create { name: String },
-    Destroy { name: String },
-    Print { name: String },
+    /// Lists lists
     List,
+    /// Creates a new list
+    Create { name: String },
+    /// Destroys a list
+    Destroy { name: String },
+    /// Prints a list
+    Print { name: String },
+    /// Adds an item to a list
     Add { name: String, text: String },
+    /// Removes an item from a list
     Remove { name: String, index: usize },
+    /// Toggles an item in a list
     Toggle { name: String, index: usize },
 }
 
